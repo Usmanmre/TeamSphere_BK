@@ -21,7 +21,6 @@ const authenticateToken = (req, res, next) => {
     res.status(401).send("Invalid token");
   }
 };
-
 // Register Route
 router.post("/register", authenticateToken, async (req, res) => {
   const { title } = req.body;
