@@ -1,0 +1,191 @@
+// auth.js
+require("dotenv").config();
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/user");
+
+const router = express.Router();
+const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
+
+// Middleware to authenticate token
+const authenticateToken = (req, res, next) => {
+  const token = req.headers["authorization"];
+  if (!token) return res.status(403).send("Token required");
+  console.log("token", token);
+  try {
+    const user = jwt.verify(token, SECRET_KEY);
+    req.user = user;
+    next();
+  } catch (err) {
+    res.status(401).send("Invalid token");
+  }
+};
+
+
+router.post("/register", async (req, res) => {
+  const { name, email, role, password } = req.body;
+
+  try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const user = new User({ name, email, role, password: hashedPassword });
+    await user.save();
+
+    // Generate JWT Token
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      SECRET_KEY,
+      { expiresIn: "1h" }
+    );
+
+    // Exclude password from response
+    const { password: _, ...userWithoutPassword } = user.toObject();
+
+    // Send response with token
+    res.status(201).json({
+      message: "User registered successfully",
+      token,
+      user: userWithoutPassword,
+    });
+  } catch (err) {
+    console.error("Error registering user:", err);
+    res.status(500).json({ message: "Error registering user" });
+  }
+});
+
+
+router.get("/getTeam", authenticateToken, async (req, res) => {
+  const email = req.user?.email;
+
+  try {
+    const user = await User.findOne({ email });
+    console.log("useeeer", user);
+    const teamMembers = user?.team;
+    res.status(200).send(teamMembers);
+  } catch (err) {
+    res.status(400).send("Error getting team");
+  }
+});
+
+router.post("/addTeam", authenticateToken, async (req, res) => {
+  const teamMembers = req.body; // Array of emails
+  const email = req.user?.email;
+
+  console.log("🔹 Team Members to Add:", teamMembers);
+  console.log("🔹 Requesting User:", email);
+
+  try {
+    // ✅ Find user in the database
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Extract existing team emails
+    const existingTeamEmails = new Set(user.team.map((member) => member.email));
+   console.log('existingTeamEmails', existingTeamEmails)
+    // ✅ Filter out duplicate emails
+    const newTeamMembers = teamMembers
+      .filter((memberEmail) => !existingTeamEmails.has(memberEmail))
+      .map((email) => ({ email }));
+
+   console.log('newTeamMembers', newTeamMembers)
+
+    if (newTeamMembers.length > 0) {
+      // ✅ Add new members
+      user.team.push(...newTeamMembers);
+      await user.save();
+      console.log(`✅ Added ${newTeamMembers.length} new team members.`);
+
+      return res.status(201).json({
+        message: `${newTeamMembers.length} new team members added.`,
+        user,
+      });
+    }
+
+    console.log("✅ No new team members to add.");
+    return res.status(200).json({
+      message: "All members already exist in the team.",
+      user,
+    });
+  } catch (err) {
+    console.error("❌ Error updating user:", err);
+    return res.status(500).json({
+      message: "Internal server error.",
+      error: err.message,
+    });
+  }
+});
+
+// router.put("/update", authenticateToken, async (req, res) => {
+//   const { board, email } = req.body;
+
+//   try {
+//     const updatedUser = await User.findOneAndUpdate(
+//       { email: email },
+//       {
+//         $set: {
+//           "boards.owner": board.owner,
+//           "boards.boardID": board.boardID,
+//           "boards.title": board.title,
+//         },
+//       },
+//       { new: true } // return the updated document
+//     );
+
+//     if (!updatedUser) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     res
+//       .status(200)
+//       .json({ message: "User updated successfully", user: updatedUser });
+//   } catch (err) {
+//     console.error("Error updating user:", err);
+//     res
+//       .status(500)
+//       .json({ message: "Error updating user", error: err.message });
+//   }
+// });
+
+// Login Route
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).send("User not found");
+    // Compare the provided password with the hashed password in the database
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).send("Invalid credentials");
+
+    // Generate a JWT token if the password is correct
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      SECRET_KEY,
+      { expiresIn: "1h" }
+    );
+    // Send the token and user data (excluding the hashed password)
+    const { password: _, ...userWithoutPassword } = user.toObject();
+    res.json({ token, user: userWithoutPassword });
+  } catch (err) {
+    res.status(500).send("Error logging in");
+  }
+});
+
+// Protected Route
+router.post("/logout", authenticateToken, (req, res) => {
+  res.status(200).json({ message: "Logged out successfully" });
+});
+
+module.exports = router;
