@@ -1,60 +1,54 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const { MONGO_URI } = require("./config");
-const bodyParser = require("body-parser");
-const cors = require("cors"); // Import cors package
 require("dotenv").config();
+const bodyParser = require("body-parser");
+const cors = require("cors");
 const authRoutes = require("./routes/auth");
 const boardRoutes = require("./routes/board");
 const tasksRoutes = require("./routes/task");
 const notificationsRoutes = require("./routes/notification");
 const { Server } = require("socket.io");
-const http = require("http"); // Import HTTP module
+const http = require("http");
 const handleSocket = require("./sockets/socketHandler");
 const { initSocket } = require("./sockets/socketManager");
 
 const app = express();
-const port = 3001; // Port can be customized as needed
-const SECRET_KEY = process.env.SECRET_KEY;
+const port = process.env.PORT || 3001; // Use environment port for Koyeb
+const MONGO_URI = process.env.MONGO_URI; // Load from .env
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000"; // Set frontend URL
 
-// CORS Middleware Configuration
+// CORS Middleware
 app.use(
   cors({
-    origin:[ "http://localhost:3000" , "http://192.168.110.15:3000"], // Allow requests from this origin
-    methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
-    credentials: true, // Allow cookies to be sent with requests if needed
+    origin: [FRONTEND_URL], // Allow Koyeb frontend
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
   })
 );
 
 // Create HTTP server
-const server = http.createServer(app); // FIXED: Added missing server instance
+const server = http.createServer(app);
+const io = initSocket(server);
+handleSocket(io);
 
-const io = initSocket(server); // Initialize socket and save globally
-
-handleSocket(io); // Initializes all socket logic
-
-const onlineUsers = new Map(); // key = userId, value = socketId
-
-// Middleware to parse JSON and URL-encoded bodies
+// Middleware
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// Serve static files from the "public" directory
 app.use(express.static("public"));
 
-console.log("MONGO_URI", MONGO_URI);
+console.log("Connecting to MongoDB...");
 
 // Connect to MongoDB
 mongoose
   .connect(MONGO_URI, {
-    ssl: true, // Ensure SSL/TLS is used
-    tlsAllowInvalidCertificates: false, // Prevent invalid cert issues
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    ssl: true,
+    tlsAllowInvalidCertificates: false,
   })
-  .then(() => console.log("MongoDB connected!"))
-  .catch((err) => {
-    console.error("Error connecting to MongoDB:", err.message);
-  });
+  .then(() => console.log("✅ MongoDB Connected!"))
+  .catch((err) => console.error("❌ MongoDB Connection Error:", err.message));
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -62,21 +56,20 @@ app.use("/api/board", boardRoutes);
 app.use("/api/task", tasksRoutes);
 app.use("/api/notification", notificationsRoutes);
 
-
 // Basic route
 app.get("/", (req, res) => {
-  res.send("Welcome to my Express App!");
+  res.send("Welcome to my Express App on Koyeb! 🚀");
 });
 
-// Global error handling middleware
+// Global error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send("Something went wrong!");
 });
 
-// FIXED: Use `server.listen` instead of `app.listen`
-server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+// Start server
+server.listen(port, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${port}`);
 });
 
 module.exports = { io };
