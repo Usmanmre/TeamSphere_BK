@@ -61,6 +61,13 @@ app.get("/", (req, res) => {
   res.send("Welcome to my Express App on Koyeb! 🚀");
 });
 
+// Auth route
+app.get("/api/auth", (req, res) => {
+  res.json({ message: "Auth API is working!" });
+});
+
+
+
 // Global error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
