@@ -26,7 +26,6 @@ router.get("/all", authenticateToken, async (req, res) => {
     const allNotis = await Notification.find({ assignedTo: email }).sort({
       createdAt: -1,
     });
-    console.log("allNotis", allNotis);
 
     if (!allNotis) {
       return res.status(404).json({ message: "No Notis found for this user" });

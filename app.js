@@ -16,7 +16,6 @@ const app = express();
 const port = process.env.PORT || 3001; // Use environment port for Koyeb
 const MONGO_URI = process.env.MONGO_URI; // Load from .env
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000"; // Set frontend URL
-
 // CORS Middleware
 app.use(
   cors({
@@ -25,7 +24,6 @@ app.use(
     credentials: true,
   })
 );
-
 // Create HTTP server
 const server = http.createServer(app);
 const io = initSocket(server);
@@ -40,6 +38,7 @@ app.use(express.static("public"));
 console.log("Connecting to MongoDB...");
 
 // Connect to MongoDB
+console.log("MONGO_URI", MONGO_URI);
 mongoose
   .connect(MONGO_URI, {
     useNewUrlParser: true,
@@ -65,8 +64,6 @@ app.get("/", (req, res) => {
 app.get("/api/auth", (req, res) => {
   res.json({ message: "Auth API is working!" });
 });
-
-
 
 // Global error handling
 app.use((err, req, res, next) => {
