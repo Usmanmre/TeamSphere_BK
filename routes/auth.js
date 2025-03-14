@@ -26,13 +26,18 @@ router.post("/register", async (req, res) => {
   const { name, email, role, password } = req.body;
 
   try {
+    // Validate required fields
+    if (!name || !email || !role || !password) {
+      return res.status(400).json({ status: "error", message: "All fields are required" });
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(409).json({ status: "error", message: "User already exists" });
     }
 
-    // Hash the password
+    // Hash the password securely
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create new user
@@ -49,15 +54,16 @@ router.post("/register", async (req, res) => {
     // Exclude password from response
     const { password: _, ...userWithoutPassword } = user.toObject();
 
-    // Send response with token
+    // Send success response
     res.status(201).json({
+      status: "success",
       message: "User registered successfully",
       token,
       user: userWithoutPassword,
     });
   } catch (err) {
     console.error("Error registering user:", err);
-    res.status(500).json({ message: "Error registering user" });
+    res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
 
@@ -78,8 +84,6 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
   const teamMembers = req.body; // Array of emails
   const email = req.user?.email;
 
-  console.log("🔹 Team Members to Add:", teamMembers);
-  console.log("🔹 Requesting User:", email);
 
   try {
     // ✅ Find user in the database
@@ -91,13 +95,11 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
 
     // ✅ Extract existing team emails
     const existingTeamEmails = new Set(user.team.map((member) => member.email));
-    console.log("existingTeamEmails", existingTeamEmails);
     // ✅ Filter out duplicate emails
     const newTeamMembers = teamMembers
       .filter((memberEmail) => !existingTeamEmails.has(memberEmail))
       .map((email) => ({ email }));
 
-    console.log("newTeamMembers", newTeamMembers);
 
     if (newTeamMembers.length > 0) {
       // ✅ Add new members
@@ -125,36 +127,7 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
   }
 });
 
-// router.put("/update", authenticateToken, async (req, res) => {
-//   const { board, email } = req.body;
 
-//   try {
-//     const updatedUser = await User.findOneAndUpdate(
-//       { email: email },
-//       {
-//         $set: {
-//           "boards.owner": board.owner,
-//           "boards.boardID": board.boardID,
-//           "boards.title": board.title,
-//         },
-//       },
-//       { new: true } // return the updated document
-//     );
-
-//     if (!updatedUser) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     res
-//       .status(200)
-//       .json({ message: "User updated successfully", user: updatedUser });
-//   } catch (err) {
-//     console.error("Error updating user:", err);
-//     res
-//       .status(500)
-//       .json({ message: "Error updating user", error: err.message });
-//   }
-// });
 
 // Login Route
 router.post("/login", async (req, res) => {
