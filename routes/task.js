@@ -28,144 +28,74 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-router.post("/register", authenticateToken, async (req, res) => {
-  console.log("req.body", req.body);
+router.post("/create-task", authenticateToken, async (req, res) => {
+  console.log("📥 Task Creation Request Received:", req.body);
 
-  const { title, description, assignedTo, board, status, selectedBoard } =
-    req.body;
+  const { title, description, assignedTo, selectedBoard, status } = req.body;
   const createdBy = req.user?.email;
 
   try {
-    // ✅ Basic Validation
-    if (!title || !assignedTo || !board?.boardID) {
+    // ✅ Basic Input Validation
+    if (!title || !assignedTo || !selectedBoard?.boardID) {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
     // ✅ Ensure User is Part of the Board BEFORE Task Creation
-    const userAddedToBoard = await ensureUserInBoard(assignedTo, board);
+    const userCheck = await ensureUserInBoard(assignedTo, selectedBoard);
 
-    if (!userAddedToBoard) {
-      return res.status(400).json({
-        message: `User ${assignedTo} could not be added to the board.`,
-      });
+    if (!userCheck.success) {
+      return res.status(userCheck.status).json({ message: userCheck.message });
     }
 
-    // ✅ Create Task
+    // ✅ Create Task in Database
     const task = new Tasks({
       title,
       description,
       assignedTo,
-      status,
+      status: status || "inProgress", // Default status if not provided
       createdBy,
-      boardID: board.boardID,
+      boardID: selectedBoard.boardID,
       selectedBoard,
     });
+
     await task.save();
+    console.log("✅ Task Successfully Created:", task);
 
-    console.log(
-      "✅ Current Online Users from task.js:",
-      Array.from(onlineUsers.entries())
-    );
-
-    // ✅ Prepare Notification
-    const message = `${title}`;
+    // ✅ Create and Save Notification
+    const notificationMessage = `${title}`;
     const notification = new Notification({
       assignedTo,
       createdBy,
       task: task._id,
-      message,
-      boardName: selectedBoard,
-      boardID: board.boardID,
+      message: notificationMessage,
+      boardName: selectedBoard.title,
+      boardID: selectedBoard.boardID,
     });
+
     await notification.save();
+    console.log("🔔 Notification Created:", notification);
 
-    // ✅ Check if user is online and send real-time notification
+    // ✅ Send Real-time Notification if User is Online
     const socketId = onlineUsers.get(assignedTo);
-    console.log(`🔔 Checking online status for user ${assignedTo}:`, socketId);
-
     if (socketId) {
       const io = getIO();
-      io.to(socketId).emit("notification", { message, createdBy, title });
-      console.log(`✅ Real-time notification sent to ${assignedTo}`);
-    } else {
-      console.log(
-        `❌ User ${assignedTo} is offline. No real-time notification sent.`
-      );
-    }
-
-    res.status(201).json({ message: "Task created and notification handled." });
-  } catch (error) {
-    console.error("❌ Error in /register:", error);
-    res.status(500).json({ message: "Internal server error." });
-  }
-});
-
-router.post("/register", authenticateToken, async (req, res) => {
-  console.log("req.body", req.body);
-
-  const { title, description, assignedTo, board, status, selectedBoard } =
-    req.body;
-  const createdBy = req.user?.email;
-
-  try {
-    // ✅ Basic Validation
-    if (!title || !assignedTo || !board?.boardID) {
-      return res.status(400).json({ message: "Missing required fields." });
-    }
-
-    // ✅ Ensure User is Part of the Board BEFORE Task Creation
-    const userAddedToBoard = await ensureUserInBoard(assignedTo, board);
-
-    if (!userAddedToBoard) {
-      return res.status(400).json({
-        message: `User ${assignedTo} could not be added to the board.`,
+      io.to(socketId).emit("notification", {
+        message: notificationMessage,
+        createdBy,
+        title,
       });
-    }
-
-    // ✅ Create Task
-    const task = new Tasks({
-      title,
-      description,
-      assignedTo,
-      status,
-      createdBy,
-      boardID: board.boardID,
-      selectedBoard,
-    });
-    await task.save();
-
-    console.log(
-      "✅ Current Online Users from task.js:",
-      Array.from(onlineUsers.entries())
-    );
-
-    // ✅ Prepare Notification
-    const message = `"${title}"`;
-    const notification = new Notification({
-      assignedTo,
-      createdBy,
-      task: task._id,
-      message,
-    });
-    await notification.save();
-
-    // ✅ Check if user is online and send real-time notification
-    const socketId = onlineUsers.get(assignedTo);
-    console.log(`🔔 Checking online status for user ${assignedTo}:`, socketId);
-
-    if (socketId) {
-      const io = getIO();
-      io.to(socketId).emit("notification", { message, createdBy, title });
       console.log(`✅ Real-time notification sent to ${assignedTo}`);
     } else {
-      console.log(
-        `❌ User ${assignedTo} is offline. No real-time notification sent.`
-      );
+      console.log(`❌ User ${assignedTo} is offline. No real-time notification sent.`);
     }
 
-    res.status(201).json({ message: "Task created and notification handled." });
+    res.status(201).json({
+      success: true,
+      message: "Task created and notification sent.",
+      task,
+    });
   } catch (error) {
-    console.error("❌ Error in /register:", error);
+    console.error("❌ Error Creating Task:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 });
@@ -173,45 +103,48 @@ router.post("/register", authenticateToken, async (req, res) => {
 async function ensureUserInBoard(email, board) {
   console.log(`📥 Checking if user ${email} is part of board ${board.title}`);
 
+  // Find user by email
   const assignedUser = await User.findOne({ email: email });
-  console.log("assignedUser", assignedUser);
-  console.log("assignedUser.boards", assignedUser.boards);
 
   if (!assignedUser) {
-    console.warn(`⚠️ User ${email} not found in database.`);
-    return false; // No user found, so cannot be in the board.
+    console.warn(`⚠️ User ${email} not found.`);
+    return { success: false, status: 404, message: `User ${email} is not registered.` };
   }
 
-  // ✅ Defensive Fix: Ensure boards is always an array (data hygiene)
+  console.log("✅ User found:", assignedUser.email);
+
+  // Ensure assignedUser.boards is an array
   if (!Array.isArray(assignedUser.boards)) {
-    console.warn(
-      `⚠️ Fixing invalid boards format for user ${assignedUser.email}`
-    );
     assignedUser.boards = assignedUser.boards ? [assignedUser.boards] : [];
   }
 
-  // ✅ Check if already part of the board
+  // Check if the user is already part of the board
   const alreadyInBoard = assignedUser.boards.some(
     (userBoard) => userBoard.boardID === board.boardID
   );
-  console.log("alreadyInBoard", alreadyInBoard);
 
   if (alreadyInBoard) {
-    console.log(`✅ User ${email} is already part of board ${board.title}`);
-    return true;
+    console.log(`✅ User ${email} is already in board ${board.title}`);
+    return { success: true, status: 200, message: `User already in board.` };
   }
-  // ✅ Add to board if missing
+
+  // Add user to board
   assignedUser.boards.push({
     boardID: board.boardID,
     title: board.title,
   });
-  console.log("assignedUser now", assignedUser);
 
   await assignedUser.save();
   console.log(`✅ Added user ${email} to board ${board.title}`);
 
-  return true;
+  return {
+    success: true,
+    status: 201,
+    message: `User ${email} successfully added to board ${board.title}.`,
+  };
 }
+
+
 
 // Example Express route (can adapt to Nest easily)
 router.post("/test-notification", (req, res) => {

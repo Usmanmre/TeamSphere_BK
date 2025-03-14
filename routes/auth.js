@@ -22,7 +22,6 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-
 router.post("/register", async (req, res) => {
   const { name, email, role, password } = req.body;
 
@@ -62,7 +61,6 @@ router.post("/register", async (req, res) => {
   }
 });
 
-
 router.get("/getTeam", authenticateToken, async (req, res) => {
   const email = req.user?.email;
 
@@ -93,13 +91,13 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
 
     // ✅ Extract existing team emails
     const existingTeamEmails = new Set(user.team.map((member) => member.email));
-   console.log('existingTeamEmails', existingTeamEmails)
+    console.log("existingTeamEmails", existingTeamEmails);
     // ✅ Filter out duplicate emails
     const newTeamMembers = teamMembers
       .filter((memberEmail) => !existingTeamEmails.has(memberEmail))
       .map((email) => ({ email }));
 
-   console.log('newTeamMembers', newTeamMembers)
+    console.log("newTeamMembers", newTeamMembers);
 
     if (newTeamMembers.length > 0) {
       // ✅ Add new members
@@ -161,13 +159,19 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
 // Login Route
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+
   try {
     // Find the user by email
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).send("User not found");
-    // Compare the provided password with the hashed password in the database
+    if (!user) {
+      return res.status(400).json({ status: "error", message: "User not found" });
+    }
+
+    // Compare the provided password with the hashed password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).send("Invalid credentials");
+    if (!isMatch) {
+      return res.status(401).json({ status: "error", message: "Invalid credentials" });
+    }
 
     // Generate a JWT token if the password is correct
     const token = jwt.sign(
@@ -175,13 +179,23 @@ router.post("/login", async (req, res) => {
       SECRET_KEY,
       { expiresIn: "1h" }
     );
-    // Send the token and user data (excluding the hashed password)
+
+    // Exclude password from user object before sending response
     const { password: _, ...userWithoutPassword } = user.toObject();
-    res.json({ token, user: userWithoutPassword });
+
+    // Send success response
+    return res.status(200).json({
+      status: "success",
+      message: "Login successful",
+      token,
+      user: userWithoutPassword,
+    });
   } catch (err) {
-    res.status(500).send("Error logging in");
+    console.error("Login Error:", err.message);
+    return res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
+
 
 // Protected Route
 router.post("/logout", authenticateToken, (req, res) => {
