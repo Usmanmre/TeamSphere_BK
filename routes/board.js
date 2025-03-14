@@ -27,10 +27,9 @@ router.post("/register", authenticateToken, async (req, res) => {
   try {
     const newBoard = new Boards({ title, createdBy });
     await newBoard.save();
-    console.log("newBoard", newBoard);
-    res.status(201).send("Board registered");
+    res.status(201).send({message: "Board registered"});
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(400).json({ message: "Title required" });
   }
 });
 
