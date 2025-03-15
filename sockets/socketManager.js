@@ -2,6 +2,8 @@ let ioInstance = null;
 
 function initSocket(server) {
     const { Server } = require("socket.io");
+    console.log("Initializing Socket.IO...");
+
     ioInstance = new Server(server, {
         cors: {
             origin: "http://localhost:3000",
@@ -9,7 +11,6 @@ function initSocket(server) {
             credentials: true,
           },
     });
-
     return ioInstance;
 }
 

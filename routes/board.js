@@ -24,14 +24,25 @@ const authenticateToken = (req, res, next) => {
 router.post("/register", authenticateToken, async (req, res) => {
   const { title } = req.body;
   const createdBy = req.user?.email;
+
+  if (!title) {
+    return res.status(400).json({ message: "Title required" });
+  }
+
   try {
     const newBoard = new Boards({ title, createdBy });
-    await newBoard.save();
-    res.status(201).send({message: "Board registered"});
+    const savedBoard = await newBoard.save();
+
+    // Assign MongoDB's _id to boardID
+    savedBoard.boardID = savedBoard._id;
+    await savedBoard.save();
+
+    res.status(201).json({ message: "Board registered", boardID: savedBoard.boardID });
   } catch (err) {
-    res.status(400).json({ message: "Title required" });
+    res.status(500).json({ message: "Error creating board", error: err.message });
   }
 });
+
 
 router.get("/all", authenticateToken, async (req, res) => {
   const email = req.user?.email;

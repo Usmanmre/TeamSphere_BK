@@ -32,6 +32,8 @@ const TaskSchema = new Schema({
   selectedBoard: {
     type: String,
   },
+  createdAt: { type: Date, default: Date.now }, // Timestamp
+
 });
 
 module.exports = mongoose.model("Tasks", TaskSchema);

@@ -5,6 +5,7 @@ const notificationSchema = new mongoose.Schema({
   createdBy: { type: String, ref: "User", required: true }, // Organizer sending the notification
   task: { type: mongoose.Schema.Types.ObjectId, ref: "Task", required: true }, // Related task
   message: { type: String, required: true }, // Notification message
+  taskStatus: { type: String, required: true }, // Notification message
   boardName: { type: String, required: true }, // boardName
   boardID: { type: String, required: true }, // boardID
   isRead: { type: Boolean, default: false }, // Read/Unread status
