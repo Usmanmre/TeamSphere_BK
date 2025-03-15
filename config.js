@@ -1,3 +1,2 @@
-export const SECRET_KEY = "your_jwt_secret_key";
-export const FRONTEND_URL = "https://team-sphere-ui.vercel.app/";
-
+export const SECRET_KEY = process.env.SECRET_KEY;
+export const FRONTEND_URL = process.env.FRONTEND_URL;
