@@ -1,6 +1,12 @@
 const onlineUsers = require("./onlineUsers");
 
 module.exports = (io) => {
+    if (!io) {
+        console.error("⚠️ Socket.IO instance is not available!");
+        return;
+    }
+    console.log("✅ Socket.IO handler initialized");  // <-- Add this
+
     io.on("connection", (socket) => {
         console.log(`✅ New Connection: ${socket.id}`);
 

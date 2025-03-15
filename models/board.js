@@ -13,7 +13,6 @@ const BoardSchema = new Schema({
        },
        boardID: {
         type: String,
-        default: uuidv4, // Assign a default random ID using UUID
 
        }
    

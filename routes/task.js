@@ -54,8 +54,8 @@ router.post("/create-task", authenticateToken, async (req, res) => {
       assignedTo,
       status: status || "inProgress", // Default status if not provided
       createdBy,
-      boardID: selectedBoard.boardID,
-      selectedBoard,
+      boardID: selectedBoard._id,
+      selectedBoard: selectedBoard.title,
     });
 
     await task.save();
@@ -67,9 +67,10 @@ router.post("/create-task", authenticateToken, async (req, res) => {
       assignedTo,
       createdBy,
       task: task._id,
+      taskStatus: status,
       message: notificationMessage,
       boardName: selectedBoard.title,
-      boardID: selectedBoard.boardID,
+      boardID: selectedBoard._id,
     });
 
     await notification.save();
@@ -82,7 +83,7 @@ router.post("/create-task", authenticateToken, async (req, res) => {
       io.to(socketId).emit("notification", {
         message: notificationMessage,
         createdBy,
-        title,
+        selectedBoard: selectedBoard.title,
       });
       console.log(`✅ Real-time notification sent to ${assignedTo}`);
     } else {
@@ -120,7 +121,7 @@ async function ensureUserInBoard(email, board) {
 
   // Check if the user is already part of the board
   const alreadyInBoard = assignedUser.boards.some(
-    (userBoard) => userBoard.boardID === board.boardID
+    (userBoard) => userBoard.boardID === board._id
   );
 
   if (alreadyInBoard) {
@@ -130,7 +131,7 @@ async function ensureUserInBoard(email, board) {
 
   // Add user to board
   assignedUser.boards.push({
-    boardID: board.boardID,
+    boardID: board._id,
     title: board.title,
   });
 
@@ -144,15 +145,6 @@ async function ensureUserInBoard(email, board) {
   };
 }
 
-
-
-// Example Express route (can adapt to Nest easily)
-router.post("/test-notification", (req, res) => {
-  const { userId, message } = req.body;
-
-  console.log("socketId", socketId);
-  console.log("socketId", userId);
-});
 
 // Register Route
 router.put("/update", authenticateToken, async (req, res) => {
@@ -219,13 +211,31 @@ router.put("/updateStatus", authenticateToken, async (req, res) => {
 
     // Save updated task
     const updatedTask = await existingTask.save();
+
+    const existingNotification = await Notification.findOne({})
+     // ✅ Create and Save Notification
+     const notificationMessage = `${existingTask.title}`;
+     const notification = new Notification({
+       assignedTo: existingTask.assignedTo,
+       createdBy: existingTask.createdBy,
+       task: existingTask._id,
+       taskStatus: updatedStatus,
+       message: notificationMessage,
+       boardName: existingTask.selectedBoard,
+       boardID: existingTask.boardID,
+     });
+ 
+     await notification.save();
+     console.log("🔔 Notification Created:", notification);
+
+     
     const socketId = onlineUsers.get(existingTask.assignedTo); // Note: assignedTo must match the userId from joinRoom
     console.log("socketId", socketId);
     console.log(
       `🔔 Checking online status for user inside updatedTask ${existingTask.assignedTo}:`,
       socketId
     );
-    const message = `Task with title '${existingTask.title}' is updated`;
+    const message = `Task with title '${existingTask.title}' is updated to ${updatedStatus}`;
     if (socketId) {
       const io = getIO();
       io.to(socketId).emit("taskUpdated", {
