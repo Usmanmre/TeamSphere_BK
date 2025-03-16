@@ -83,7 +83,7 @@ router.post("/create-task", authenticateToken, async (req, res) => {
       io.to(socketId).emit("notification", {
         message: notificationMessage,
         createdBy,
-        selectedBoard: selectedBoard.title,
+        boardName: selectedBoard.title,
       });
       console.log(`✅ Real-time notification sent to ${assignedTo}`);
     } else {
