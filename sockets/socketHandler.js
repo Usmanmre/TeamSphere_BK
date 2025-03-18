@@ -13,7 +13,6 @@ module.exports = (io) => {
         socket.on("joinRoom", (userID) => {
             onlineUsers.set(userID, socket.id);
             console.log("Current Online Users:", Array.from(onlineUsers.entries()));
-            io.to(userID).emit("notification", { message: "Test notification from server!" });
         });
 
         socket.on("disconnect", () => {

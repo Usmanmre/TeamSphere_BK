@@ -74,20 +74,18 @@ router.post("/create-task", authenticateToken, async (req, res) => {
     });
 
     await notification.save();
-    console.log("🔔 Notification Created:", notification);
 
-    // ✅ Send Real-time Notification if User is Online
+    const io = getIO();
     const socketId = onlineUsers.get(assignedTo);
-    if (socketId) {
-      const io = getIO();
+    if (socketId && io.sockets.sockets.get(socketId)) {
       io.to(socketId).emit("notification", {
         message: notificationMessage,
         createdBy,
         boardName: selectedBoard.title,
       });
-      console.log(`✅ Real-time notification sent to ${assignedTo}`);
+      console.log(`✅ Notification sent to ${assignedTo}`);
     } else {
-      console.log(`❌ User ${assignedTo} is offline. No real-time notification sent.`);
+      console.log(`❌ User ${assignedTo} is offline or has an invalid socket.`);
     }
 
     res.status(201).json({
@@ -109,7 +107,11 @@ async function ensureUserInBoard(email, board) {
 
   if (!assignedUser) {
     console.warn(`⚠️ User ${email} not found.`);
-    return { success: false, status: 404, message: `User ${email} is not registered.` };
+    return {
+      success: false,
+      status: 404,
+      message: `User ${email} is not registered.`,
+    };
   }
 
   console.log("✅ User found:", assignedUser.email);
@@ -144,7 +146,6 @@ async function ensureUserInBoard(email, board) {
     message: `User ${email} successfully added to board ${board.title}.`,
   };
 }
-
 
 // Register Route
 router.put("/update", authenticateToken, async (req, res) => {
@@ -212,39 +213,37 @@ router.put("/updateStatus", authenticateToken, async (req, res) => {
     // Save updated task
     const updatedTask = await existingTask.save();
 
-    const existingNotification = await Notification.findOne({})
-     // ✅ Create and Save Notification
-     const notificationMessage = `${existingTask.title}`;
-     const notification = new Notification({
-       assignedTo: existingTask.assignedTo,
-       createdBy: existingTask.createdBy,
-       task: existingTask._id,
-       taskStatus: updatedStatus,
-       message: notificationMessage,
-       boardName: existingTask.selectedBoard,
-       boardID: existingTask.boardID,
-     });
- 
-     await notification.save();
-     console.log("🔔 Notification Created:", notification);
+    const existingNotification = await Notification.findOne({});
+    // ✅ Create and Save Notification
+    const notificationMessage = `${existingTask.title}`;
+    const notification = new Notification({
+      assignedTo: existingTask.assignedTo,
+      createdBy: existingTask.createdBy,
+      task: existingTask._id,
+      taskStatus: updatedStatus,
+      message: notificationMessage,
+      boardName: existingTask.selectedBoard,
+      boardID: existingTask.boardID,
+    });
 
-     
-    const socketId = onlineUsers.get(existingTask.assignedTo); // Note: assignedTo must match the userId from joinRoom
-    console.log("socketId", socketId);
-    console.log(
-      `🔔 Checking online status for user inside updatedTask ${existingTask.assignedTo}:`,
-      socketId
-    );
+    await notification.save();
+    console.log("🔔 Notification Created:", notification);
+
     const message = `Task with title '${existingTask.title}' is updated to ${updatedStatus}`;
-    if (socketId) {
-      const io = getIO();
+    const io = getIO();
+    const socketId = onlineUsers.get(existingTask.assignedTo); // Note: assignedTo must match the userId from joinRoom
+
+    if (socketId && io.sockets.sockets.get(socketId)) {
       io.to(socketId).emit("taskUpdated", {
         message,
         createdBy,
       });
+      console.log(`✅ Notification sent to ${existingTask.assignedTo}`);
+    } else {
+      console.log(`❌ User ${existingTask.assignedTo} is offline or has an invalid socket.`);
     }
-    console.log("updatedTask", updatedTask);
 
+    console.log("updatedTask", updatedTask);
     return res
       .status(200)
       .json({ message: "Task updated successfully", task: updatedTask });

@@ -29,7 +29,12 @@ app.use(
 // Create HTTP server
 const server = http.createServer(app);
 const io = initSocket(server);
-handleSocket(io);
+if (!io) {
+  console.error("⚠️ Failed to initialize Socket.IO!");
+} else {
+  console.log("✅ Calling handleSocket...");
+  handleSocket(io);  // Attach event listeners
+}
 
 // Middleware
 app.use(express.json());
@@ -40,7 +45,6 @@ app.use(express.static("public"));
 console.log("Connecting to MongoDB...");
 
 // Connect to MongoDB
-console.log("MONGO_URI", MONGO_URI);
 mongoose
   .connect(MONGO_URI, {
     useNewUrlParser: true,
@@ -62,10 +66,6 @@ app.get("/", (req, res) => {
   res.send("Welcome to my Express App on Koyeb! 🚀");
 });
 
-// Auth route
-app.get("/api/auth", (req, res) => {
-  res.json({ message: "Auth API is working!" });
-});
 
 // Global error handling
 app.use((err, req, res, next) => {
