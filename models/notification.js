@@ -9,6 +9,7 @@ const notificationSchema = new mongoose.Schema({
   boardName: { type: String, required: true }, // boardName
   boardID: { type: String, required: true }, // boardID
   isRead: { type: Boolean, default: false }, // Read/Unread status
+  isUpdated: { type: Boolean, default: false }, // Read/Unread status
   createdAt: { type: Date, default: Date.now }, // Timestamp
 });
 

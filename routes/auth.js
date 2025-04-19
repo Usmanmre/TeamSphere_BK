@@ -72,7 +72,6 @@ router.get("/getTeam", authenticateToken, async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-    console.log("useeeer", user);
     const teamMembers = user?.team;
     res.status(200).send(teamMembers);
   } catch (err) {

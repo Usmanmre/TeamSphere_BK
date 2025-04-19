@@ -157,7 +157,8 @@ router.put("/update", authenticateToken, async (req, res) => {
 
   try {
     // Find the task by ID
-    const existingTask = await Tasks.findOne({ taskID });
+    const existingTask = await Tasks.findOne({ _id: new mongoose.Types.ObjectId(taskID) });
+
 
     if (!existingTask) {
       return res.status(404).json({ message: "Task not found" });
@@ -185,75 +186,68 @@ router.put("/update", authenticateToken, async (req, res) => {
   }
 });
 
-// Register Route
+
+
 router.put("/updateStatus", authenticateToken, async (req, res) => {
-  console.log("req.body", req.body);
-
-  const { _id, updatedStatus } = req.body;
-  const createdBy = req.user?.email;
-  console.log("req.body", req.body);
-  console.log("id", _id);
   try {
-    // Find the task by ID
-    const existingTask = await Tasks.findOne({
-      _id: new mongoose.Types.ObjectId(_id),
-    });
+    console.log("📩 Request received:", req.body);
 
+    const { _id, updatedStatus } = req.body;
+    const createdBy = req.user?.email;
+
+    if (!_id || !updatedStatus) {
+      return res.status(400).json({ message: "Invalid request parameters" });
+    }
+
+    // ✅ Find Task by ID
+    const existingTask = await Tasks.findById(_id);
     if (!existingTask) {
       return res.status(404).json({ message: "Task not found" });
     }
-    console.log("existingTask", existingTask);
-    // Update task fields if provided in request body
-    existingTask.title = existingTask.title;
-    existingTask.description = existingTask.description;
-    existingTask.assignedTo = existingTask.assignedTo;
-    existingTask.boardID = existingTask.boardID;
-    existingTask.status = updatedStatus;
 
-    // Save updated task
+    console.log("🔍 Found Task:", existingTask.title);
+
+    // ✅ Update Task Status
+    existingTask.status = updatedStatus;
     const updatedTask = await existingTask.save();
 
-    const existingNotification = await Notification.findOne({});
-    // ✅ Create and Save Notification
-    const notificationMessage = `${existingTask.title}`;
-    const notification = new Notification({
-      assignedTo: existingTask.assignedTo,
-      createdBy: existingTask.createdBy,
-      task: existingTask._id,
-      taskStatus: updatedStatus,
-      message: notificationMessage,
-      boardName: existingTask.selectedBoard,
-      boardID: existingTask.boardID,
-    });
+    // ✅ Find and Update Notification
+    const existingNotification = await Notification.findOneAndUpdate(
+      { task: existingTask._id },
+      {
+        taskStatus: updatedStatus,
+        message: existingTask.title,
+        boardName: existingTask.selectedBoard,
+        boardID: existingTask.boardID,
+        task: existingTask._id,
+        isRead: false,
+        isUpdated: true,
+      },
+      { new: true, upsert: true } // Creates a new notification if not found
+    );
 
-    await notification.save();
-    console.log("🔔 Notification Created:", notification);
-
-    const message = `Task with title '${existingTask.title}' is updated to ${updatedStatus}`;
+    console.log("🔔 Notification Updated:", existingNotification);
+   await existingNotification.save()
+    // ✅ Emit Real-time Notification if User is Online
+    const message = `Task '${existingTask.title}' updated to ${updatedStatus}`;
     const io = getIO();
-    const socketId = onlineUsers.get(existingTask.assignedTo); // Note: assignedTo must match the userId from joinRoom
+    const socketId = onlineUsers.get(existingTask.assignedTo);
 
     if (socketId && io.sockets.sockets.get(socketId)) {
-      io.to(socketId).emit("taskUpdated", {
-        message,
-        createdBy,
-      });
+      io.to(socketId).emit("taskUpdated", { message, createdBy, updatedStatus });
       console.log(`✅ Notification sent to ${existingTask.assignedTo}`);
     } else {
-      console.log(`❌ User ${existingTask.assignedTo} is offline or has an invalid socket.`);
+      console.log(`❌ User ${existingTask.assignedTo} is offline or has no valid socket.`);
     }
 
-    console.log("updatedTask", updatedTask);
-    return res
-      .status(200)
-      .json({ message: "Task updated successfully", task: updatedTask });
+    return res.status(200).json({ message: "Task updated successfully", task: updatedTask });
   } catch (error) {
-    console.error("Error occurred:", error);
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    console.error("❌ Error occurred:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 });
+
+module.exports = router;
 
 // Register Route
 router.get("/all", authenticateToken, async (req, res) => {

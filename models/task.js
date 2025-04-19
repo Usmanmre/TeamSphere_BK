@@ -18,10 +18,6 @@ const TaskSchema = new Schema({
     type: String,
     required: true,
   },
-  taskID: {
-    type: String,
-    default: uuidv4, // Assign a default random ID using UUID
-  },
   boardID: {
     type: String,
   },
