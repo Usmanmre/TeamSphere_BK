@@ -12,7 +12,6 @@ const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 const authenticateToken = (req, res, next) => {
   const token = req.headers["authorization"];
   if (!token) return res.status(403).send("Token required");
-  console.log("token", token);
   try {
     const user = jwt.verify(token, SECRET_KEY);
     req.user = user;
@@ -170,7 +169,7 @@ router.post("/login", async (req, res) => {
 
 
 // Protected Route
-router.post("/logout", authenticateToken, (req, res) => {
+router.put("/logout", authenticateToken, (req, res) => {
   res.status(200).json({ message: "Logged out successfully" });
 });
 
