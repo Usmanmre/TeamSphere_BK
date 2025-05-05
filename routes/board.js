@@ -48,12 +48,11 @@ router.post("/register", authenticateToken, async (req, res) => {
 });
 
 router.get("/all", authenticateToken, async (req, res) => {
+  
   const email = req.user?.email;
   const { role } = req.query;
   const onlineEmails = Array.from(onlineUsers.keys());
   const filteredOnlineEmails = onlineEmails.filter((e) => e !== email);
-
-
   try {
     if (role === "employee") {
       const user = await User.findOne({ email: email });
@@ -62,10 +61,11 @@ router.get("/all", authenticateToken, async (req, res) => {
           .status(200)
           .json({ message: "No boards found for employee" });
       }
-      return res.status(200).json({allBoards: user.boards, onlineUsers: filteredOnlineEmails} ); // ✅ Directly return employee boards
+      return res
+        .status(200)
+        .json({ allBoards: user.boards, onlineUsers: filteredOnlineEmails }); // ✅ Directly return employee boards
     } else {
       const allBoards = await Boards.find({ createdBy: email });
-
       if (!allBoards || allBoards.length === 0) {
         return res
           .status(200)

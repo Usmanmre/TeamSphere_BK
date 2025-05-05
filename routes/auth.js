@@ -7,6 +7,8 @@ const User = require("../models/user");
 
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
+const REFRESH_SECRET_KEY =
+  process.env.REFRESH_SECRET_KEY || "superrefreshsecretkey";
 
 // Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
@@ -27,13 +29,17 @@ router.post("/register", async (req, res) => {
   try {
     // Validate required fields
     if (!name || !email || !role || !password) {
-      return res.status(400).json({ status: "error", message: "All fields are required" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "All fields are required" });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ status: "error", message: "User already exists" });
+      return res
+        .status(409)
+        .json({ status: "error", message: "User already exists" });
     }
 
     // Hash the password securely
@@ -82,7 +88,6 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
   const teamMembers = req.body; // Array of emails
   const email = req.user?.email;
 
-
   try {
     // ✅ Find user in the database
     const user = await User.findOne({ email });
@@ -97,7 +102,6 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
     const newTeamMembers = teamMembers
       .filter((memberEmail) => !existingTeamEmails.has(memberEmail))
       .map((email) => ({ email }));
-
 
     if (newTeamMembers.length > 0) {
       // ✅ Add new members
@@ -125,36 +129,50 @@ router.post("/addTeam", authenticateToken, async (req, res) => {
   }
 });
 
-
-
 // Login Route
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Find the user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ status: "error", message: "User not found" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "User not found" });
     }
 
-    // Compare the provided password with the hashed password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ status: "error", message: "Invalid credentials" });
+      return res
+        .status(401)
+        .json({ status: "error", message: "Invalid credentials" });
     }
 
-    // Generate a JWT token if the password is correct
+    // Create tokens
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       SECRET_KEY,
-      { expiresIn: "1h" }
+      { expiresIn: "5m" }
     );
 
-    // Exclude password from user object before sending response
+    const refreshToken = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      REFRESH_SECRET_KEY,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    // Store refresh token in cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax", // or "None" if cross-origin
+    });
+
     const { password: _, ...userWithoutPassword } = user.toObject();
 
-    // Send success response
+    // Final response (only one)
     return res.status(200).json({
       status: "success",
       message: "Login successful",
@@ -163,10 +181,27 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Login Error:", err.message);
-    return res.status(500).json({ status: "error", message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ status: "error", message: "Internal server error" });
   }
 });
 
+router.post("/refresh-token", (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) return res.sendStatus(401);
+
+  jwt.verify(refreshToken, REFRESH_SECRET_KEY, (err, user) => {
+    if (err) return res.sendStatus(403);
+    const newAccessToken = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      SECRET_KEY,
+      { expiresIn: "1h" }
+    );
+
+    res.json({ accessToken: newAccessToken });
+  });
+});
 
 // Protected Route
 router.put("/logout", authenticateToken, (req, res) => {

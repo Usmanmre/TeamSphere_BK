@@ -22,15 +22,29 @@ const authenticateToken = (req, res, next) => {
 router.get("/all", authenticateToken, async (req, res) => {
   const user = req["user"];
   const email = user.email;
-  try {
-    const allNotis = await Notification.find({ assignedTo: email }).sort({
-      createdAt: -1,
-    });
+  const role = user.role;
 
-    if (!allNotis) {
-      return res.status(404).json({ message: "No Notis found for this user" });
+  console.log("user", user);
+  try {
+    if (role === "manager") {
+      const allNotis = await Notification.find({ createdBy: email }).sort({
+        createdAt: -1,
+      });
+      if (!allNotis) {
+        return res.status(404).json({ message: "No Notis found for this user" });
+      }
+      res.status(200).json(allNotis);
+    } else {
+      const allNotis = await Notification.find({ assignedTo: email }).sort({
+        createdAt: -1,
+      });
+      if (!allNotis) {
+        return res.status(404).json({ message: "No Notis found for this user" });
+      }
+      res.status(200).json(allNotis);
     }
-    res.status(200).json(allNotis);
+
+ 
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

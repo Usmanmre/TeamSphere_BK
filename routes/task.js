@@ -14,18 +14,47 @@ const { getIO } = require("../sockets/socketManager");
 
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
-
+const REFRESH_SECRET_KEY =
+  process.env.REFRESH_SECRET_KEY || "superrefreshsecretkey";
 // Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
-  const token = req.headers["authorization"];
-  if (!token) return res.status(403).send("Token required");
-  try {
-    const user = jwt.verify(token, SECRET_KEY);
-    req.user = user;
-    next();
-  } catch (err) {
-    res.status(401).send("Invalid token");
-  }
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.trim();
+
+  if (!token) return res.status(403).json({ message: "Access token required" });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (!err) {
+      req.user = user;
+      return next(); // ✅ Access token is valid
+    }
+    // ⚠️ If token expired, try refresh token
+    if (err.name === "TokenExpiredError") {
+      const refreshToken = req.cookies?.refreshToken;
+      if (!refreshToken) {
+        return res.status(401).json({ message: "Refresh token required" });
+      }
+
+      try {
+        const payload = jwt.verify(refreshToken, REFRESH_SECRET_KEY);
+
+        // Optionally: verify the user still exists or is active
+        const newAccessToken = jwt.sign(
+          { id: payload.id, email: payload.email, role: payload.role },
+          SECRET_KEY,
+          { expiresIn: "1h" }
+        );
+
+        res.setHeader("x-access-token", newAccessToken); // Optionally send new token
+        req.user = jwt.decode(newAccessToken); // Attach decoded info
+        next();
+      } catch (refreshErr) {
+        return res.status(403).json({ message: "Invalid refresh token" });
+      }
+    } else {
+      return res.status(401).json({ message: "Invalid access token" });
+    }
+  });
 };
 
 router.post("/create-task", authenticateToken, async (req, res) => {
@@ -157,8 +186,9 @@ router.put("/update", authenticateToken, async (req, res) => {
 
   try {
     // Find the task by ID
-    const existingTask = await Tasks.findOne({ _id: new mongoose.Types.ObjectId(taskID) });
-
+    const existingTask = await Tasks.findOne({
+      _id: new mongoose.Types.ObjectId(taskID),
+    });
 
     if (!existingTask) {
       return res.status(404).json({ message: "Task not found" });
@@ -185,8 +215,6 @@ router.put("/update", authenticateToken, async (req, res) => {
       .json({ message: "Internal server error", error: error.message });
   }
 });
-
-
 
 router.put("/updateStatus", authenticateToken, async (req, res) => {
   try {
@@ -227,23 +255,47 @@ router.put("/updateStatus", authenticateToken, async (req, res) => {
     );
 
     console.log("🔔 Notification Updated:", existingNotification);
-   await existingNotification.save()
+    await existingNotification.save();
     // ✅ Emit Real-time Notification if User is Online
     const message = `Task '${existingTask.title}' updated to ${updatedStatus}`;
     const io = getIO();
     const socketId = onlineUsers.get(existingTask.assignedTo);
+    const socketIdCreator = onlineUsers.get(existingTask.createdBy);
 
     if (socketId && io.sockets.sockets.get(socketId)) {
-      io.to(socketId).emit("taskUpdated", { message, createdBy, updatedStatus });
+      io.to(socketId).emit("taskUpdated", {
+        message,
+        createdBy,
+        updatedStatus,
+      });
       console.log(`✅ Notification sent to ${existingTask.assignedTo}`);
     } else {
-      console.log(`❌ User ${existingTask.assignedTo} is offline or has no valid socket.`);
+      console.log(
+        `❌ User ${existingTask.assignedTo} is offline or has no valid socket.`
+      );
     }
 
-    return res.status(200).json({ message: "Task updated successfully", task: updatedTask });
+    if (socketIdCreator && io.sockets.sockets.get(socketIdCreator)) {
+      io.to(socketIdCreator).emit("taskUpdated", {
+        message,
+        createdBy,
+        updatedStatus,
+      });
+      console.log(`✅ Notification sent to ${existingTask.createdBy}`);
+    } else {
+      console.log(
+        `❌ User ${existingTask.createdBy} is offline or has no valid socket.`
+      );
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Task updated successfully", task: updatedTask });
   } catch (error) {
     console.error("❌ Error occurred:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 });
 

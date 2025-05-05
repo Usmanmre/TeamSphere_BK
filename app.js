@@ -7,6 +7,9 @@ const authRoutes = require("./routes/auth");
 const boardRoutes = require("./routes/board");
 const tasksRoutes = require("./routes/task");
 const notificationsRoutes = require("./routes/notification");
+const zoomRoutes = require("./routes/zoom");
+const cookieParser = require('cookie-parser');
+
 const { Server } = require("socket.io");
 const http = require("http");
 const handleSocket = require("./sockets/socketHandler");
@@ -16,8 +19,8 @@ const app = express();
 const port = process.env.PORT || 3001; // Use environment port for Koyeb
 const MONGO_URI = process.env.MONGO_URI; // Load from .env
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000"; // Set frontend URL
-// const FRONTEND_URL =  "http://localhost:3000"; // Set frontend URL
-
+// const FRONTEND_URL = "http://localhost:3000"; // Set frontend URL
+//
 // CORS Middleware
 app.use(
   cors({
@@ -33,11 +36,12 @@ if (!io) {
   console.error("⚠️ Failed to initialize Socket.IO!");
 } else {
   console.log("✅ Calling handleSocket...");
-  handleSocket(io);  // Attach event listeners
+  handleSocket(io); // Attach event listeners
 }
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
@@ -60,12 +64,12 @@ app.use("/api/auth", authRoutes);
 app.use("/api/board", boardRoutes);
 app.use("/api/task", tasksRoutes);
 app.use("/api/notification", notificationsRoutes);
+app.use("/api/zoom", zoomRoutes);
 
 // Basic route
 app.get("/", (req, res) => {
   res.send("Welcome to my Express App on Koyeb! 🚀");
 });
-
 
 // Global error handling
 app.use((err, req, res, next) => {
