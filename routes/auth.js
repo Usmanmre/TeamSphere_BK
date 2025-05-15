@@ -166,7 +166,7 @@ router.post("/login", async (req, res) => {
     // Store refresh token in cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: "Lax", // or "None" if cross-origin
     });
 
