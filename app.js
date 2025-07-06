@@ -8,7 +8,8 @@ const boardRoutes = require("./routes/board");
 const tasksRoutes = require("./routes/task");
 const notificationsRoutes = require("./routes/notification");
 const zoomRoutes = require("./routes/zoom");
-const cookieParser = require('cookie-parser');
+const jobRoutes = require("./routes/jobs");
+const cookieParser = require("cookie-parser");
 
 const { Server } = require("socket.io");
 const http = require("http");
@@ -18,9 +19,8 @@ const { initSocket } = require("./sockets/socketManager");
 const app = express();
 const port = process.env.PORT || 3001; // Use environment port for Koyeb
 const MONGO_URI = process.env.MONGO_URI; // Load from .env
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000"; // Set frontend URL
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001"; // Set frontend URL
 // const FRONTEND_URL = "http://localhost:3000"; // Set frontend URL
-//
 // CORS Middleware
 app.use(
   cors({
@@ -65,6 +65,7 @@ app.use("/api/board", boardRoutes);
 app.use("/api/task", tasksRoutes);
 app.use("/api/notification", notificationsRoutes);
 app.use("/api/zoom", zoomRoutes);
+app.use("/api/jobs", jobRoutes);
 
 // Basic route
 app.get("/", (req, res) => {

@@ -24,6 +24,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 router.post("/register", async (req, res) => {
+  console.log('here')
   const { name, email, role, password } = req.body;
 
   try {

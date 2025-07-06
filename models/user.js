@@ -24,7 +24,7 @@ const UserSchema = new Schema(
     role: {
       type: String,
       required: true,
-      enum: ["admin", "manager", "employee"], // Example roles - adjust as needed
+      enum: ["admin", "manager", "employee", "hr"], // Example roles - adjust as needed
     },
     boards: [BoardSchema],
     team: [TeamSchema],
