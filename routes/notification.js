@@ -24,7 +24,6 @@ router.get("/all", authenticateToken, async (req, res) => {
   const email = user.email;
   const role = user.role;
 
-  console.log("user", user);
   try {
     if (role === "manager") {
       const allNotis = await Notification.find({ createdBy: email }).sort({
@@ -56,7 +55,7 @@ router.put("/update", authenticateToken, async (req, res) => {
 
   try {
     const result = await Notification.updateMany(
-      { assignedTo: email, isRead: false }, // Only unread notifications
+      { createdBy: email, isRead: false }, 
       { $set: { isRead: true } } // Set all to read
     );
 

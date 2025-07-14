@@ -9,6 +9,7 @@ const tasksRoutes = require("./routes/task");
 const notificationsRoutes = require("./routes/notification");
 const zoomRoutes = require("./routes/zoom");
 const jobRoutes = require("./routes/jobs");
+const donationRoutes = require("./routes/donation");
 const cookieParser = require("cookie-parser");
 
 const { Server } = require("socket.io");
@@ -66,6 +67,7 @@ app.use("/api/task", tasksRoutes);
 app.use("/api/notification", notificationsRoutes);
 app.use("/api/zoom", zoomRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/donations", donationRoutes);
 
 // Basic route
 app.get("/", (req, res) => {

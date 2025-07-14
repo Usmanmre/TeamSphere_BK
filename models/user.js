@@ -13,7 +13,7 @@ const TeamSchema = new Schema(
   {
     email: { type: String, required: true },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const UserSchema = new Schema(
@@ -28,8 +28,10 @@ const UserSchema = new Schema(
     },
     boards: [BoardSchema],
     team: [TeamSchema],
+    managerId: { type: String, required: false },
   },
   { timestamps: true }
+  
 ); // Auto `createdAt` and `updatedAt`
 
 module.exports = mongoose.model("Users", UserSchema);

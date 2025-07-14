@@ -21,6 +21,22 @@ const authenticateToken = (req, res, next) => {
     res.status(401).send("Invalid token");
   }
 };
+
+router.post("/update/manager", async (req, res) => {
+  try {
+    // Step 1: Find all users with role 'manager'
+    const team = await User.deleteMany();
+    res
+      .status(200)
+      .json({ message: "All team members updated with managerId." });
+  } catch (err) {
+    console.error("Error updating managerId:", err);
+    res
+      .status(500)
+      .json({ message: "Failed to update managerId", error: err.message });
+  }
+});
+
 router.post("/register", authenticateToken, async (req, res) => {
   const { title } = req.body;
   const createdBy = req.user?.email;
@@ -48,7 +64,6 @@ router.post("/register", authenticateToken, async (req, res) => {
 });
 
 router.get("/all", authenticateToken, async (req, res) => {
-  
   const email = req.user?.email;
   const { role } = req.query;
   const onlineEmails = Array.from(onlineUsers.keys());
