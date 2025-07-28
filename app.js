@@ -47,6 +47,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+// Special handling for Stripe webhooks - must be raw body
+app.use('/api/donations/webhook', express.raw({ type: 'application/json' }));
+
 console.log("Connecting to MongoDB...");
 
 // Connect to MongoDB

@@ -22,20 +22,20 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-router.post("/update/manager", async (req, res) => {
-  try {
-    // Step 1: Find all users with role 'manager'
-    const team = await User.deleteMany();
-    res
-      .status(200)
-      .json({ message: "All team members updated with managerId." });
-  } catch (err) {
-    console.error("Error updating managerId:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to update managerId", error: err.message });
-  }
-});
+// 
+//   try {
+//     // Step 1: Find all users with role 'manager'
+//     const team = await User.deleteMany();
+//     res
+//       .status(200)
+//       .json({ message: "All team members updated with managerId." });
+//   } catch (err) {
+//     console.error("Error updating managerId:", err);
+//     res
+//       .status(500)
+//       .json({ message: "Failed to update managerId", error: err.message });
+//   }
+// });
 
 router.post("/register", authenticateToken, async (req, res) => {
   const { title } = req.body;
