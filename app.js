@@ -1,27 +1,30 @@
-const express = require("express");
-const mongoose = require("mongoose");
-require("dotenv").config();
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const authRoutes = require("./routes/auth");
-const boardRoutes = require("./routes/board");
-const tasksRoutes = require("./routes/task");
-const notificationsRoutes = require("./routes/notification");
-const zoomRoutes = require("./routes/zoom");
-const jobRoutes = require("./routes/jobs");
-const donationRoutes = require("./routes/donation");
-const cookieParser = require("cookie-parser");
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import bodyParser from "body-parser";
+import cors from "cors";
+import authRoutes from "./routes/auth.js";
+import boardRoutes from "./routes/board.js";
+import tasksRoutes from "./routes/task.js";
+import notificationsRoutes from "./routes/notification.js";
+import zoomRoutes from "./routes/zoom.js";
+import jobRoutes from "./routes/jobs.js";
+import donationRoutes from "./routes/donation.js";
+import openAiRoutes from "./routes/openai.js";
+import cookieParser from "cookie-parser";
 
-const { Server } = require("socket.io");
-const http = require("http");
-const handleSocket = require("./sockets/socketHandler");
-const { initSocket } = require("./sockets/socketManager");
+import { Server } from "socket.io";
+import http from "http";
+import handleSocket from "./sockets/socketHandler.js";
+import { initSocket } from "./sockets/socketManager.js";
+
+dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3001; // Use environment port for Koyeb
+const port = process.env.PORT || 3003; // Use environment port for Koyeb
 const MONGO_URI = process.env.MONGO_URI; // Load from .env
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001"; // Set frontend URL
-// const FRONTEND_URL = "http://localhost:3000"; // Set frontend URL
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001" || "http://localhost:3000"; // Set frontend URL
+// const FRONTEND_URL = "http://localhost:3001" || "http://localhost:3001" ; // Set frontend URL
 // CORS Middleware
 app.use(
   cors({
@@ -30,7 +33,6 @@ app.use(
     credentials: true,
   })
 );
-// Create HTTP server
 const server = http.createServer(app);
 const io = initSocket(server);
 if (!io) {
@@ -39,7 +41,6 @@ if (!io) {
   console.log("✅ Calling handleSocket...");
   handleSocket(io); // Attach event listeners
 }
-
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
@@ -71,6 +72,8 @@ app.use("/api/notification", notificationsRoutes);
 app.use("/api/zoom", zoomRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/donations", donationRoutes);
+app.use("/api/openai", openAiRoutes);
+
 
 // Basic route
 app.get("/", (req, res) => {
@@ -88,4 +91,4 @@ server.listen(port, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${port}`);
 });
 
-module.exports = { io };
+export default { io };

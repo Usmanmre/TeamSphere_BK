@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
 const BoardSchema = new Schema(
@@ -34,4 +34,4 @@ const UserSchema = new Schema(
   
 ); // Auto `createdAt` and `updatedAt`
 
-module.exports = mongoose.model("Users", UserSchema);
+export default mongoose.model("Users", UserSchema);

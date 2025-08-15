@@ -1,7 +1,7 @@
-const onlineUsers = require("./onlineUsers");
-const Tasks = require("../models/task");
+import onlineUsers from "./onlineUsers.js";
+import Tasks from "../models/task.js";
 
-module.exports = (io) => {
+export default (io) => {
   if (!io) {
     console.error("⚠️ Socket.IO instance is not available!");
     return;

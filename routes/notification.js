@@ -1,9 +1,10 @@
-const express = require("express");
-const mongoose = require("mongoose");
+import express from "express";
+import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
+import Notification from "../models/notification.js";
+
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
-const jwt = require("jsonwebtoken");
-const Notification = require("../models/notification");
 
 // Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
@@ -79,4 +80,4 @@ router.put("/update", authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,16 +1,17 @@
 // auth.js
-require("dotenv").config();
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const Tasks = require("../models/task");
-const User = require("../models/user");
-const Notification = require("../models/notification");
-const sendEmail = require("../utility/Email");
-const mongoose = require("mongoose");
-const { io } = require("../app"); // or wherever app.js lives
-const onlineUsers = require("../sockets/onlineUsers"); // or wherever app.js lives
-const { getIO } = require("../sockets/socketManager");
+import dotenv from "dotenv";
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import Tasks from "../models/task.js";
+import User from "../models/user.js";
+import Notification from "../models/notification.js";
+import { sendEmail } from "../utility/Email.js";
+import mongoose from "mongoose";
+import onlineUsers from "../sockets/onlineUsers.js";
+import { getIO } from "../sockets/socketManager.js";
+
+dotenv.config();
 
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
@@ -299,8 +300,6 @@ router.put("/updateStatus", authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // Register Route
 router.get("/all", authenticateToken, async (req, res) => {
   const boardID = req?.query?.boardID;
@@ -315,4 +314,4 @@ router.get("/all", authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

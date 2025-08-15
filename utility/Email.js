@@ -1,5 +1,8 @@
-const nodemailer = require("nodemailer");
-require("dotenv").config();
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import Notification from "../models/notification.js";
+
+dotenv.config();
 
 const sendEmail = async (to, subject, htmlContent) => {
   try {
@@ -31,8 +34,6 @@ const sendEmail = async (to, subject, htmlContent) => {
 
 // Helper function to create notifications
 const createNotification = async (assignedTo, createdBy, type, message, options = {}) => {
-  const Notification = require("../models/notification");
-  
   const notificationData = {
     assignedTo,
     createdBy,
@@ -47,7 +48,7 @@ const createNotification = async (assignedTo, createdBy, type, message, options 
   return await notification.save();
 };
 
-module.exports = {
+export {
   sendEmail,
   createNotification
 };

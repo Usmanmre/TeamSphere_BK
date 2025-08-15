@@ -1,9 +1,11 @@
 // auth.js
-require("dotenv").config();
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/user");
+import dotenv from "dotenv";
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/user.js";
+
+dotenv.config();
 
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
@@ -209,4 +211,4 @@ router.put("/logout", authenticateToken, (req, res) => {
   res.status(200).json({ message: "Logged out successfully" });
 });
 
-module.exports = router;
+export default router;

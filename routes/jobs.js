@@ -1,19 +1,15 @@
-const express = require("express");
-const Job = require("../models/jobs");
-const User = require("../models/user");
-const router = express.Router();
-const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
-const axios = require("axios");
+import express from "express";
+import Job from "../models/jobs.js";
+import User from "../models/user.js";
+import axios from "axios";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
-const jwt = require("jsonwebtoken");
-const { default: mongoose } = require("mongoose");
+const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 
 const authenticateToken = (req, res, next) => {
   const token = req.headers["authorization"];
   if (!token) return res.status(403).send("Token required");
-  console.log("token", token);
-  console.log("SECRET_KEY", SECRET_KEY);
-
   try {
     const user = jwt.verify(token, SECRET_KEY);
     req.user = user;
@@ -22,6 +18,8 @@ const authenticateToken = (req, res, next) => {
     res.status(401).send("Invalid token");
   }
 };
+
+const router = express.Router();
 
 router.post("/add", authenticateToken, async (req, res) => {
   try {
@@ -131,4 +129,4 @@ router.get("/single/:id", authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

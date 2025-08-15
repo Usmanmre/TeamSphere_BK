@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
 const DonationsSchema = new Schema(
@@ -26,4 +26,4 @@ const DonationsSchema = new Schema(
     
   ); 
   
-  module.exports = mongoose.model("Donations", DonationsSchema);
+  export default mongoose.model("Donations", DonationsSchema);

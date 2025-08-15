@@ -1,3 +1,3 @@
 const onlineUsers = new Map();
 
-module.exports = onlineUsers;
+export default onlineUsers;

@@ -1,13 +1,16 @@
 // auth.js
-require("dotenv").config();
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const Boards = require("../models/board");
-const User = require("../models/user");
+import dotenv from "dotenv";
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import Boards from "../models/board.js";
+import User from "../models/user.js";
+import onlineUsers from "../sockets/onlineUsers.js"; // or wherever app.js lives
+
+dotenv.config();
+
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
-const onlineUsers = require("../sockets/onlineUsers"); // or wherever app.js lives
 
 // Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
@@ -97,4 +100,4 @@ router.get("/all", authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

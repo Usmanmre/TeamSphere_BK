@@ -1,7 +1,8 @@
+import { Server } from "socket.io";
+
 let ioInstance = null;
 
 function initSocket(server) {
-    const { Server } = require("socket.io");
     console.log("Initializing Socket.IO...");
 
     ioInstance = new Server(server, {
@@ -21,4 +22,4 @@ function getIO() {
     return ioInstance;
 }
 
-module.exports = { initSocket, getIO };
+export { initSocket, getIO };

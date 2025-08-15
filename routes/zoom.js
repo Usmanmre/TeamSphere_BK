@@ -1,6 +1,9 @@
-const axios = require("axios");
-const express = require("express");
+import axios from "axios";
+import express from "express";
+import jwt from "jsonwebtoken";
+
 const router = express.Router();
+const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 
 // Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
@@ -78,4 +81,4 @@ router.get("/callback", async (req, res) => {
   });
   
 
-module.exports = router;
+export default router;

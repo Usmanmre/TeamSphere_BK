@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema({
   assignedTo: { type: String, ref: "User", required: true }, // Employee receiving the notification
@@ -15,4 +15,4 @@ const notificationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }, // Timestamp
 });
 
-module.exports = mongoose.model("Notification", notificationSchema);
+export default mongoose.model("Notification", notificationSchema);

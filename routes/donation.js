@@ -1,6 +1,13 @@
-require("dotenv").config();
-const express = require("express");
-const jwt = require("jsonwebtoken");
+import dotenv from "dotenv";
+import express from "express";
+import jwt from "jsonwebtoken";
+import User from "../models/user.js";
+import Donations from "../models/donations.js";
+import { createNotification } from "../utility/Email.js";
+
+dotenv.config();
+
+import Stripe from "stripe";
 
 // Initialize Stripe with error handling
 let stripe;
@@ -10,19 +17,15 @@ try {
     console.warn("⚠️ STRIPE_SECRET_KEY not found in environment variables. Stripe functionality will be disabled.");
     stripe = null;
   } else {
-    console.log('stripeSecretKey', stripeSecretKey);
-    stripe = require("stripe")(stripeSecretKey);
+    stripe = new Stripe(stripeSecretKey);
   }
 } catch (error) {
   console.error("❌ Error initializing Stripe:", error.message);
   stripe = null;
 }
 
-const User = require("../models/user");
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
-const Donations = require("../models/donations");
-const { createNotification } = require("../utility/Email");
 
 
 // Middleware to authenticate token
@@ -241,4 +244,4 @@ router.get("/all/donation-pools", authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const { v4: uuidv4 } = require('uuid'); // For generating unique IDs
+import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid'; // For generating unique IDs
 const Schema = mongoose.Schema;
 const BoardSchema = new Schema({
 
@@ -18,4 +18,4 @@ const BoardSchema = new Schema({
    
 })
 
-module.exports = mongoose.model('Boards', BoardSchema)
+export default mongoose.model('Boards', BoardSchema)
