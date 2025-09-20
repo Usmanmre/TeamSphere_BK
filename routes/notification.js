@@ -24,27 +24,47 @@ router.get("/all", authenticateToken, async (req, res) => {
   const user = req["user"];
   const email = user.email;
   const role = user.role;
+  console.log("user", user);
+  console.log("email", email);
+  console.log("role", role);
 
   try {
     if (role === "manager") {
-      const allNotis = await Notification.find({ createdBy: email }).sort({
-        createdAt: -1,
-      });
+      const allNotis = await Notification.aggregate([
+        {
+          $match: {
+            $or: [{ createdBy: email }, { assignedTo: email }],
+          },
+        },
+        {
+          $sort: { createdAt: -1 },
+        },
+      ]);
+
       if (!allNotis) {
-        return res.status(404).json({ message: "No Notis found for this user" });
+        return res
+          .status(404)
+          .json({ message: "No Notis found for this user" });
       }
       res.status(200).json(allNotis);
     } else {
-      const allNotis = await Notification.find({ assignedTo: email }).sort({
-        createdAt: -1,
-      });
+      const allNotis = await Notification.aggregate([
+        {
+          $match: {
+            $or: [{ createdBy: email }, { assignedTo: email }],
+          },
+        },
+        {
+          $sort: { createdAt: -1 },
+        },
+      ]);
       if (!allNotis) {
-        return res.status(404).json({ message: "No Notis found for this user" });
+        return res
+          .status(404)
+          .json({ message: "No Notis found for this user" });
       }
       res.status(200).json(allNotis);
     }
-
- 
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -56,7 +76,7 @@ router.put("/update", authenticateToken, async (req, res) => {
 
   try {
     const result = await Notification.updateMany(
-      { createdBy: email, isRead: false }, 
+      { createdBy: email, isRead: false },
       { $set: { isRead: true } } // Set all to read
     );
 

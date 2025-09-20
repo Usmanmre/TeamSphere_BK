@@ -24,7 +24,7 @@ const app = express();
 const port = process.env.PORT || 3003; // Use environment port for Koyeb
 const MONGO_URI = process.env.MONGO_URI; // Load from .env
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001" || "http://localhost:3000"; // Set frontend URL
-// const FRONTEND_URL = "http://localhost:3001" || "http://localhost:3001" ; // Set frontend URL
+// const FRONTEND_URL = "http://localhost:3000" || "http://localhost:3001" ; // Set frontend URL
 // CORS Middleware
 app.use(
   cors({

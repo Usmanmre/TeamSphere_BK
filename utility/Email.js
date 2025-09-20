@@ -33,7 +33,14 @@ const sendEmail = async (to, subject, htmlContent) => {
 };
 
 // Helper function to create notifications
-const createNotification = async (assignedTo, createdBy, type, message, options = {}) => {
+const createNotification = async (
+  assignedTo,
+  createdBy,
+  type,
+  message,
+  options = {},
+) => {
+
   const notificationData = {
     assignedTo,
     createdBy,
@@ -41,18 +48,15 @@ const createNotification = async (assignedTo, createdBy, type, message, options 
     message,
     isRead: false,
     isUpdated: false,
-    ...options
+    ...options,
+    lastModifiedBy: createdBy, // Set after spreading options
   };
-  
+
   const notification = new Notification(notificationData);
   return await notification.save();
 };
 
-export {
-  sendEmail,
-  createNotification
-};
-
+export { sendEmail, createNotification };
 
 // EMAIL_USER=teamsphere384@gmail.com
 // EMAIL_PASS=TeamSphere123#

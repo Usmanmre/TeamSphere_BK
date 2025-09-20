@@ -14,6 +14,10 @@ const TaskSchema = new Schema({
     type: String,
     required: true,
   },
+  lastModifiedBy: {
+    type: String,
+    required: true,
+  },
   assignedTo: {
     type: String,
     required: true,
@@ -29,7 +33,7 @@ const TaskSchema = new Schema({
     type: String,
   },
   createdAt: { type: Date, default: Date.now }, // Timestamp
-
+  lastModifiedAt: { type: Date, default: Date.now }, // Timestamp
 });
 
 export default mongoose.model("Tasks", TaskSchema);

@@ -23,6 +23,8 @@ export default (io) => {
       console.log(`Socket ${socket.id} joined task room: ${taskId}`);
     });
 
+    
+
     socket.on("task:edit", async ({ taskId, content, editedBy }) => {
       await Tasks.findByIdAndUpdate(taskId, { description: content });
       socket.to(taskId).emit("task:edited", { taskId, content, editedBy });

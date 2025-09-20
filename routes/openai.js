@@ -53,22 +53,26 @@ router.post("/submit", upload.single("resume"), async (req, res) => {
       maxOutputTokens: 2048,
     });
 
-    const prompt = `Please analyze the following resume text and extract the personal information in the exact JSON format specified. Only return the JSON, no additional text.
+    const prompt = `You are an expert resume parser and ATS evaluator. Analyze the following resume text and extract the personal information and an ATS score, formatted strictly as the specified JSON schema. 
 
-Resume Text:
-${pdfText}
-
-Please extract and format the information as:
-{
-  "personal_information": {
-    "full_name": "extracted full name",
-    "phone_number": "extracted phone number or null if not found",
-    "email": "extracted email or null if not found",
-    "linkedin_url": "extracted LinkedIn URL or null if not found",
-    "portfolio_url": "extracted portfolio URL or null if not found",
-    "location": "extracted location or null if not found"
-  }
-}`;
+    Only return valid JSON. Do not include any extra commentary, explanations, or text.
+    
+    Resume Text:
+    ${pdfText}
+    
+    Return the output in the following JSON format:
+    {
+      "personal_information": {
+        "full_name": "Extracted full name or null if not found",
+        "phone_number": "Extracted phone number or null if not found",
+        "email": "Extracted email or null if not found",
+        "linkedin_url": "Extracted LinkedIn URL or null if not found",
+        "portfolio_url": "Extracted portfolio URL or null if not found",
+        "location": "Extracted location or null if not found"
+      },
+      "ats_score": "ATS score as a percentage (e.g. 78) or null if not found"
+    }`; 
+    
 
     const response = await model.call([new HumanMessage(prompt)]);
     const aiResponse = response.content;

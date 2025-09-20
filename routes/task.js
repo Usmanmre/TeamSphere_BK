@@ -6,10 +6,11 @@ import jwt from "jsonwebtoken";
 import Tasks from "../models/task.js";
 import User from "../models/user.js";
 import Notification from "../models/notification.js";
-import { sendEmail } from "../utility/Email.js";
+import { createNotification, sendEmail } from "../utility/Email.js";
 import mongoose from "mongoose";
 import onlineUsers from "../sockets/onlineUsers.js";
 import { getIO } from "../sockets/socketManager.js";
+import { normalizeEmail } from "../utility/helper.js";
 
 dotenv.config();
 
@@ -86,24 +87,28 @@ router.post("/create-task", authenticateToken, async (req, res) => {
       createdBy,
       boardID: selectedBoard._id,
       selectedBoard: selectedBoard.title,
+      lastModifiedBy: createdBy,
+      lastModifiedAt: Date.now(),
     });
 
     await task.save();
     console.log("✅ Task Successfully Created:", task);
 
     // ✅ Create and Save Notification
-    const notificationMessage = `${title}`;
-    const notification = new Notification({
+    const notificationMessage = `New task assigned: ${title}`;
+
+    await createNotification(
       assignedTo,
       createdBy,
-      task: task._id,
-      taskStatus: status,
-      message: notificationMessage,
-      boardName: selectedBoard.title,
-      boardID: selectedBoard._id,
-    });
-
-    await notification.save();
+      "task_created",
+      notificationMessage,
+      {
+        task: task._id,
+        taskStatus: status,
+        boardName: selectedBoard.title,
+        boardID: selectedBoard._id,
+      }
+    );
 
     const io = getIO();
     const socketId = onlineUsers.get(assignedTo);
@@ -144,8 +149,6 @@ async function ensureUserInBoard(email, board) {
     };
   }
 
-  console.log("✅ User found:", assignedUser.email);
-
   // Ensure assignedUser.boards is an array
   if (!Array.isArray(assignedUser.boards)) {
     assignedUser.boards = assignedUser.boards ? [assignedUser.boards] : [];
@@ -177,13 +180,55 @@ async function ensureUserInBoard(email, board) {
   };
 }
 
+// Helper function to send task notifications
+async function sendTaskNotification(recipient, modifiedBy, task, updatedStatus, notificationType = "task_updated", customMessage = null) {
+  if (!recipient || recipient === modifiedBy) {
+    console.log(`ℹ️ No notification sent - recipient is same as modifier or invalid`);
+    return;
+  }
+
+  // Use custom message if provided, otherwise use default format
+  const notificationMessage = customMessage || `Task '${task.title}' status updated to ${updatedStatus} by ${modifiedBy}`;
+
+  // Save notification to database
+  await createNotification(
+    recipient,
+    modifiedBy,
+    notificationType,
+    notificationMessage,
+    {
+      task: task._id,
+      taskStatus: updatedStatus,
+      boardName: task.selectedBoard,
+      boardID: task.boardID,
+      isUpdated: true,
+    }
+  );
+
+  // Send real-time socket notification
+  const io = getIO();
+  const socketId = onlineUsers.get(recipient);
+  const message = customMessage || `Task '${task.title}' updated to ${updatedStatus}`;
+ const normalizedEmail = normalizeEmail(modifiedBy);
+  if (socketId && io.sockets.sockets.get(socketId)) {
+    io.to(socketId).emit("taskUpdated", {
+      message,
+      updatedStatus,
+      normalizedEmail,
+    });
+    console.log(`✅ Socket notification sent to ${recipient}`);
+  } else {
+    console.log(`❌ User ${recipient} is offline or has no valid socket.`);
+  }
+}
+
 // Register Route
 router.put("/update", authenticateToken, async (req, res) => {
   console.log("req.body", req.body);
 
   const { title, description, assignedTo, board, status, taskID } = req.body;
   const createdBy = req.user?.email;
-  console.log("req.body", req.body);
+  console.log("req.body", createdBy);
 
   try {
     // Find the task by ID
@@ -201,10 +246,21 @@ router.put("/update", authenticateToken, async (req, res) => {
     existingTask.assignedTo = assignedTo || existingTask.assignedTo;
     existingTask.boardID = board || existingTask.boardID;
     existingTask.status = status || existingTask.status;
+    existingTask.lastModifiedBy = createdBy;
+    existingTask.lastModifiedAt = Date.now();
 
     // Save updated task
     const updatedTask = await existingTask.save();
     console.log("updatedTask im", updatedTask);
+
+    // 🧠 Determine who should be notified and send notification (same logic as updateStatus)
+    const recipient =
+      createdBy === existingTask.createdBy
+        ? existingTask.assignedTo
+        : existingTask.createdBy;
+
+    const customMessage = `$ Task ${title} is updated by ${createdBy}`;
+    await sendTaskNotification(recipient, createdBy, existingTask, status, "task_updated", customMessage);
 
     return res
       .status(200)
@@ -219,84 +275,39 @@ router.put("/update", authenticateToken, async (req, res) => {
 
 router.put("/updateStatus", authenticateToken, async (req, res) => {
   try {
-    console.log("📩 Request received:", req.body);
-
     const { _id, updatedStatus } = req.body;
-    const createdBy = req.user?.email;
+    const modifiedBy = req.user?.email;
 
     if (!_id || !updatedStatus) {
       return res.status(400).json({ message: "Invalid request parameters" });
     }
-
-    // ✅ Find Task by ID
+    // 🔍 Find Task
     const existingTask = await Tasks.findById(_id);
     if (!existingTask) {
       return res.status(404).json({ message: "Task not found" });
     }
-
-    console.log("🔍 Found Task:", existingTask.title);
-
-    // ✅ Update Task Status
+    // ✏️ Update Task Status
     existingTask.status = updatedStatus;
+    existingTask.lastModifiedBy = modifiedBy;
+    existingTask.lastModifiedAt = Date.now();
     const updatedTask = await existingTask.save();
+    // 🧠 Determine who should be notified and send notification
+    const recipient =
+      modifiedBy === existingTask.createdBy
+        ? existingTask.assignedTo
+        : existingTask.createdBy;
 
-    // ✅ Find and Update Notification
-    const existingNotification = await Notification.findOneAndUpdate(
-      { task: existingTask._id },
-      {
-        taskStatus: updatedStatus,
-        message: existingTask.title,
-        boardName: existingTask.selectedBoard,
-        boardID: existingTask.boardID,
-        task: existingTask._id,
-        isRead: false,
-        isUpdated: true,
-      },
-      { new: true, upsert: true } // Creates a new notification if not found
-    );
-
-    console.log("🔔 Notification Updated:", existingNotification);
-    await existingNotification.save();
-    // ✅ Emit Real-time Notification if User is Online
-    const message = `Task '${existingTask.title}' updated to ${updatedStatus}`;
-    const io = getIO();
-    const socketId = onlineUsers.get(existingTask.assignedTo);
-    const socketIdCreator = onlineUsers.get(existingTask.createdBy);
-
-    if (socketId && io.sockets.sockets.get(socketId)) {
-      io.to(socketId).emit("taskUpdated", {
-        message,
-        createdBy,
-        updatedStatus,
-      });
-      console.log(`✅ Notification sent to ${existingTask.assignedTo}`);
-    } else {
-      console.log(
-        `❌ User ${existingTask.assignedTo} is offline or has no valid socket.`
-      );
-    }
-
-    if (socketIdCreator && io.sockets.sockets.get(socketIdCreator)) {
-      io.to(socketIdCreator).emit("taskUpdated", {
-        message,
-        createdBy,
-        updatedStatus,
-      });
-      console.log(`✅ Notification sent to ${existingTask.createdBy}`);
-    } else {
-      console.log(
-        `❌ User ${existingTask.createdBy} is offline or has no valid socket.`
-      );
-    }
-
-    return res
-      .status(200)
-      .json({ message: "Task updated successfully", task: updatedTask });
+    await sendTaskNotification(recipient, modifiedBy, existingTask, updatedStatus);
+    return res.status(200).json({
+      message: "Task updated successfully",
+      task: updatedTask,
+    });
   } catch (error) {
-    console.error("❌ Error occurred:", error);
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    console.error("❌ Error:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 });
 
